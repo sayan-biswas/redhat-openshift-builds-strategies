@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: 'Desired tag'
+        description: 'Release Tag'
         required: true
 
 jobs:
@@ -15,19 +15,18 @@ jobs:
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Sync strategies
+      uses: actions/checkout@v4
+    - name: Generate release artifacts
+      id: generate
       run: |
-        rm -rf release-strategies.yaml
-        for file in `ls clusterBuildStrategy/**/*.yaml`
-        do 
-          cat $file >> release-strategies.yaml
-        done
-    - name: Generate and upload release.yaml
+        kustomize build . > strategies.yaml
+        echo "file=strategies.yaml" >> "$GITHUB_OUTPUT"
+    - name: Upload release artifacts
       env:
         REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         REGISTRY_USERNAME: ${{ github.repository_owner }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ARTIFACT: ${{ steps.generate.outputs.file }}
       run: |
         gh release create ${TAG}
-        gh release upload ${TAG} release-strategies.yaml
+        gh release upload ${TAG} "${ARTIFACT}"
